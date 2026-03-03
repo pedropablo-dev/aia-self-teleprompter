@@ -1,9 +1,14 @@
+// --- IMPORTANTE: Entorno de Ejecución ---
+// Al utilizar <script type="module">, este archivo DEBE abrirse a través de un
+// servidor web local (ej. Live Server, python -m http.server) para evitar errores
+// de CORS. No funcionará abriendo el HTML haciendo doble clic desde el sistema de archivos (file://).
+
 let cardsData = [];
 let currentCardIndex = 0;
 let colorIndex = 0;
-const WPM = 130; 
+const WPM = 130;
 let draggedCardId = null;
-let originalTextContent = ""; 
+let originalTextContent = "";
 
 const fileInput = document.getElementById('file-input');
 const fileNameDisplay = document.getElementById('file-name-display');
@@ -22,8 +27,20 @@ const jumpListContent = document.getElementById('jump-list-content');
 const autosaveIndicator = document.getElementById('autosave-indicator');
 const fontSliderPanel = document.getElementById('font-slider-panel');
 
+// Delegación de eventos para la lista de tarjetas
+cardsList.addEventListener('click', (e) => {
+    const btnDelete = e.target.closest('.btn-delete');
+    if (btnDelete) {
+        const cardItem = btnDelete.closest('.card-item');
+        if (cardItem) {
+            const id = parseInt(cardItem.dataset.id);
+            deleteCard(id);
+        }
+    }
+});
+
 function saveToLocal() {
-    if (!textContainer.innerText.trim() && cardsData.length === 0) return; 
+    if (!textContainer.innerText.trim() && cardsData.length === 0) return;
     const projectData = { fileName: fileNameDisplay.textContent, originalText: originalTextContent, currentHtml: textContainer.innerHTML, cards: cardsData, colorIndex: colorIndex };
     localStorage.setItem('prompterAutosave', JSON.stringify(projectData));
     autosaveIndicator.style.opacity = '1'; setTimeout(() => { autosaveIndicator.style.opacity = '0'; }, 1500);
@@ -40,7 +57,6 @@ function loadFromLocal() {
         } catch (e) { console.warn("No se pudo recuperar el autoguardado."); }
     }
 }
-window.addEventListener('DOMContentLoaded', loadFromLocal);
 
 function loadFileContent(file) {
     if (!file) return;
@@ -48,16 +64,16 @@ function loadFileContent(file) {
     const reader = new FileReader();
 
     if (file.name.endsWith('.json')) {
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             try {
                 const projectData = JSON.parse(e.target.result);
-                originalTextContent = projectData.originalText || ""; textContainer.innerHTML = projectData.currentHtml || ""; 
+                originalTextContent = projectData.originalText || ""; textContainer.innerHTML = projectData.currentHtml || "";
                 cardsData = projectData.cards || []; colorIndex = projectData.colorIndex || 0;
-                renderSidebar(); saveToLocal(); 
+                renderSidebar(); saveToLocal();
             } catch (error) { alert("Archivo corrupto o inválido."); }
         };
     } else {
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             originalTextContent = e.target.result; textContainer.textContent = originalTextContent;
             cardsData = []; cardsList.innerHTML = ''; colorIndex = 0; updateGlobalStats(); saveToLocal();
         };
@@ -70,7 +86,7 @@ textContainer.addEventListener('dragover', (e) => { e.preventDefault(); textCont
 textContainer.addEventListener('dragleave', () => textContainer.classList.remove('dragover'));
 textContainer.addEventListener('drop', (e) => {
     e.preventDefault(); textContainer.classList.remove('dragover');
-    if(e.dataTransfer.files.length > 0) loadFileContent(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length > 0) loadFileContent(e.dataTransfer.files[0]);
 });
 
 document.getElementById('btn-save').addEventListener('click', async () => {
@@ -82,18 +98,18 @@ document.getElementById('btn-save').addEventListener('click', async () => {
 
     try {
         if (window.showSaveFilePicker) {
-            const handle = await window.showSaveFilePicker({ suggestedName: exportName + '.json', types: [{ description: 'Proyecto JSON', accept: {'application/json': ['.json']} }] });
+            const handle = await window.showSaveFilePicker({ suggestedName: exportName + '.json', types: [{ description: 'Proyecto JSON', accept: { 'application/json': ['.json'] } }] });
             const writable = await handle.createWritable(); await writable.write(jsonStr); await writable.close();
         } else {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(jsonStr);
             const a = document.createElement('a'); a.href = dataStr; a.download = exportName + ".json";
             document.body.appendChild(a); a.click(); a.remove();
         }
-    } catch (error) {}
+    } catch (error) { }
 });
 
 document.getElementById('btn-undo').addEventListener('click', () => { document.execCommand('undo'); updateGlobalStats(); saveToLocal(); });
-document.getElementById('btn-refresh').addEventListener('click', () => { if(originalTextContent) { textContainer.textContent = originalTextContent; cardsData = []; cardsList.innerHTML = ''; colorIndex = 0; updateGlobalStats(); saveToLocal(); } });
+document.getElementById('btn-refresh').addEventListener('click', () => { if (originalTextContent) { textContainer.textContent = originalTextContent; cardsData = []; cardsList.innerHTML = ''; colorIndex = 0; updateGlobalStats(); saveToLocal(); } });
 document.getElementById('btn-clear').addEventListener('click', () => { originalTextContent = ""; fileInput.value = ""; fileNameDisplay.textContent = "Ningún archivo cargado"; textContainer.textContent = "Arrastra aquí tu archivo .txt o tu proyecto .json para empezar..."; cardsData = []; cardsList.innerHTML = ''; colorIndex = 0; updateGlobalStats(); localStorage.removeItem('prompterAutosave'); });
 
 textContainer.addEventListener('input', () => {
@@ -115,7 +131,7 @@ textContainer.addEventListener('input', () => {
                         textarea.nextElementSibling.querySelector('span').textContent = `${newText.length} car. | ~${timeStr}`;
                     }
                 }
-                break; 
+                break;
             }
             node = node.parentNode;
         }
@@ -123,20 +139,20 @@ textContainer.addEventListener('input', () => {
     saveToLocal();
 });
 
-textContainer.addEventListener('mouseup', function() {
+textContainer.addEventListener('mouseup', function () {
     const selection = window.getSelection();
-    if (selection.isCollapsed) return; 
+    if (selection.isCollapsed) return;
     const selectedText = selection.toString().trim();
     if (selectedText.length === 0) return;
 
     const cardId = Date.now();
     const range = selection.getRangeAt(0);
     const markNode = document.createElement('mark');
-    markNode.className = `highlight c${colorIndex % 4}`; markNode.id = `mark-${cardId}`; 
+    markNode.className = `highlight c${colorIndex % 4}`; markNode.id = `mark-${cardId}`;
     try { markNode.appendChild(range.extractContents()); range.insertNode(markNode); } catch (e) { console.warn("Selección cruzada"); }
 
     cardsData.push({ id: cardId, text: selectedText });
-    colorIndex++; selection.removeAllRanges(); 
+    colorIndex++; selection.removeAllRanges();
 
     const markElements = Array.from(textContainer.querySelectorAll('mark.highlight'));
     const sortedCards = [];
@@ -147,7 +163,7 @@ textContainer.addEventListener('mouseup', function() {
     });
     cardsData = sortedCards;
 
-    renderSidebar(); saveToLocal(); 
+    renderSidebar(); saveToLocal();
 });
 
 function calculateReadingTime(text) { return Math.ceil((text.trim().split(/\s+/).length / WPM) * 60); }
@@ -164,7 +180,7 @@ function updateGlobalStats() {
     const tSecsCards = Math.ceil((totalCardsWords / WPM) * 60);
     const minCards = Math.floor(tSecsCards / 60); const secCards = tSecsCards % 60;
     const timeStrCards = minCards > 0 ? `${minCards}m ${secCards}s` : `${secCards}s`;
-    
+
     statsSidebar.textContent = `Tarjetas: ${cardsData.length} | ${totalCardsChars} car. | ~${timeStrCards}`;
     btnStart.style.display = cardsData.length > 0 ? 'block' : 'none';
 }
@@ -176,9 +192,6 @@ function renderSidebar() {
         const cardDiv = document.createElement('div');
         cardDiv.className = 'card-item'; cardDiv.draggable = true; cardDiv.dataset.id = card.id;
         cardDiv.innerHTML = `<textarea data-id="${card.id}" spellcheck="false">${card.text}</textarea><div class="card-meta"><span>${card.text.length} car. | ~${timeStr}</span><button class="btn-delete">Eliminar</button></div>`;
-
-        const btnDelete = cardDiv.querySelector('.btn-delete');
-        btnDelete.addEventListener('click', () => deleteCard(card.id));
 
         cardDiv.addEventListener('dragstart', (e) => { draggedCardId = card.id; e.dataTransfer.effectAllowed = 'move'; });
         cardDiv.addEventListener('dragover', (e) => { e.preventDefault(); cardDiv.classList.add('drag-over'); });
@@ -192,7 +205,7 @@ function renderSidebar() {
     updateGlobalStats();
 
     document.querySelectorAll('.card-item textarea').forEach(textarea => {
-        textarea.addEventListener('input', function(e) {
+        textarea.addEventListener('input', function (e) {
             const id = parseInt(e.target.getAttribute('data-id'));
             const cardIndex = cardsData.findIndex(c => c.id === id);
             if (cardIndex > -1) {
@@ -200,8 +213,8 @@ function renderSidebar() {
                 const timeStr = calculateReadingTime(e.target.value) + "s";
                 e.target.nextElementSibling.querySelector('span').textContent = `${e.target.value.length} car. | ~${timeStr}`;
                 const markNode = document.getElementById(`mark-${id}`);
-                if(markNode) markNode.innerText = e.target.value;
-                updateGlobalStats(); saveToLocal(); 
+                if (markNode) markNode.innerText = e.target.value;
+                updateGlobalStats(); saveToLocal();
             }
         });
     });
@@ -210,29 +223,29 @@ function renderSidebar() {
 function deleteCard(id) {
     cardsData = cardsData.filter(c => c.id !== id);
     const markNode = document.getElementById(`mark-${id}`);
-    if(markNode) { const textNode = document.createTextNode(markNode.innerText); markNode.replaceWith(textNode); }
-    renderSidebar(); saveToLocal(); 
+    if (markNode) { const textNode = document.createTextNode(markNode.innerText); markNode.replaceWith(textNode); }
+    renderSidebar(); saveToLocal();
 }
 
 function swapCards(idA, idB) {
     const indexA = cardsData.findIndex(c => c.id === idA); const indexB = cardsData.findIndex(c => c.id === idB);
     const tempCard = cardsData[indexA]; cardsData[indexA] = cardsData[indexB]; cardsData[indexB] = tempCard;
     const markA = document.getElementById(`mark-${idA}`); const markB = document.getElementById(`mark-${idB}`);
-    if(markA && markB) { const tempNode = document.createTextNode(''); markA.before(tempNode); markB.before(markA); tempNode.replaceWith(markB); }
-    renderSidebar(); saveToLocal(); 
+    if (markA && markB) { const tempNode = document.createTextNode(''); markA.before(tempNode); markB.before(markA); tempNode.replaceWith(markB); }
+    renderSidebar(); saveToLocal();
 }
 
 // --- FUNCIONES PANTALLA COMPLETA NATIVA ---
 function enterFullscreen() {
     const elem = document.documentElement;
-    if (elem.requestFullscreen) { elem.requestFullscreen().catch(()=>{}); } 
-    else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); } 
+    if (elem.requestFullscreen) { elem.requestFullscreen().catch(() => { }); }
+    else if (elem.webkitRequestFullscreen) { elem.webkitRequestFullscreen(); }
     else if (elem.msRequestFullscreen) { elem.msRequestFullscreen(); }
 }
 function exitFullscreenMode() {
     if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
-        if (document.exitFullscreen) { document.exitFullscreen(); } 
-        else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); } 
+        if (document.exitFullscreen) { document.exitFullscreen(); }
+        else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
         else if (document.msExitFullscreen) { document.msExitFullscreen(); }
     }
 }
@@ -256,7 +269,7 @@ document.getElementById('btn-font-prompter').addEventListener('click', (e) => {
 prompterView.addEventListener('click', () => { fontSliderPanel.style.display = 'none'; });
 fontSliderPanel.addEventListener('click', (e) => e.stopPropagation());
 
-function exitPrompter() { 
+function exitPrompter() {
     exitFullscreenMode(); // Salimos de Fullscreen
     prompterView.style.display = 'none'; setupView.style.display = 'flex'; fontSliderPanel.style.display = 'none';
 }
@@ -267,19 +280,19 @@ function renderPrompterCard() {
     progressIndicator.textContent = `${currentCardIndex + 1} / ${cardsData.length}`;
 }
 
-prompterText.addEventListener('input', function(e) {
+prompterText.addEventListener('input', function (e) {
     if (cardsData.length === 0) return;
     const newText = e.target.innerText;
     const currentCard = cardsData[currentCardIndex];
     currentCard.text = newText;
     const textarea = document.querySelector(`textarea[data-id="${currentCard.id}"]`);
-    if(textarea) {
+    if (textarea) {
         textarea.value = newText;
         textarea.nextElementSibling.querySelector('span').textContent = `${newText.length} car. | ~${calculateReadingTime(newText)}s`;
     }
     const markNode = document.getElementById(`mark-${currentCard.id}`);
-    if(markNode) markNode.innerText = newText;
-    updateGlobalStats(); saveToLocal(); 
+    if (markNode) markNode.innerText = newText;
+    updateGlobalStats(); saveToLocal();
 });
 
 function nextCard() { if (currentCardIndex < cardsData.length - 1) { currentCardIndex++; renderPrompterCard(); } }
@@ -291,7 +304,7 @@ fontSizeSlider.addEventListener('input', (e) => { prompterText.style.fontSize = 
 
 // --- MENÚ DE SALTO ---
 function openJumpMenu() {
-    jumpListContent.innerHTML = ''; 
+    jumpListContent.innerHTML = '';
     cardsData.forEach((card, index) => {
         const item = document.createElement('div'); item.className = 'jump-item';
         const previewText = card.text.length > 60 ? card.text.substring(0, 60) + '...' : card.text;
@@ -304,9 +317,9 @@ function openJumpMenu() {
 
 function closeJumpMenu() { jumpMenuOverlay.style.display = 'none'; }
 document.getElementById('btn-close-jump').addEventListener('click', closeJumpMenu);
-jumpMenuOverlay.addEventListener('click', (e) => { if(e.target === jumpMenuOverlay) closeJumpMenu(); });
+jumpMenuOverlay.addEventListener('click', (e) => { if (e.target === jumpMenuOverlay) closeJumpMenu(); });
 
-document.addEventListener('keydown', function(e) {
+document.addEventListener('keydown', function (e) {
     if (jumpMenuOverlay.style.display === 'flex') { if (e.key === 'Escape') closeJumpMenu(); return; }
     if (prompterView.style.display !== 'block') return;
     if (document.activeElement === prompterText) { if (e.key === 'Escape') { prompterText.blur(); } return; }
@@ -318,3 +331,7 @@ document.addEventListener('keydown', function(e) {
     else if (prevKeys.includes(e.key)) { e.preventDefault(); prevCard(); }
     else if (e.key === 'Escape') { exitPrompter(); }
 });
+
+// Autocarga del estado al inicio del módulo
+loadFromLocal();
+
