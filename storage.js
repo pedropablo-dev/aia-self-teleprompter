@@ -9,7 +9,7 @@ const autosaveIndicator = document.getElementById('autosave-indicator');
 
 export function saveToLocal() {
     if (!textContainer.innerText.trim() && state.cardsData.length === 0) return;
-    const projectData = { fileName: fileNameDisplay.textContent, originalText: state.originalTextContent, currentHtml: textContainer.innerHTML, cards: state.cardsData, colorIndex: state.colorIndex };
+    const projectData = { fileName: fileNameDisplay.textContent, originalText: state.originalTextContent, currentHtml: textContainer.innerHTML, cards: state.cardsData, colorIndex: state.colorIndex, WPM: state.WPM, fontSize: state.fontSize };
     localStorage.setItem('prompterAutosave', JSON.stringify(projectData));
     autosaveIndicator.style.opacity = '1'; setTimeout(() => { autosaveIndicator.style.opacity = '0'; }, 1500);
 }
@@ -21,7 +21,9 @@ export function loadFromLocal() {
             const projectData = JSON.parse(savedData);
             fileNameDisplay.textContent = projectData.fileName || "Proyecto Recuperado";
             state.originalTextContent = projectData.originalText || ""; textContainer.innerHTML = projectData.currentHtml || "";
-            state.cardsData = projectData.cards || []; state.colorIndex = projectData.colorIndex || 0; renderSidebar();
+            state.cardsData = projectData.cards || []; state.colorIndex = projectData.colorIndex || 0;
+            state.WPM = projectData.WPM || 130; state.fontSize = projectData.fontSize || 8;
+            renderSidebar();
             historyManager.pushHistory();
         } catch (e) { console.warn("No se pudo recuperar el autoguardado."); }
     }
@@ -38,6 +40,7 @@ export function loadFileContent(file) {
                 const projectData = JSON.parse(e.target.result);
                 state.originalTextContent = projectData.originalText || ""; textContainer.innerHTML = projectData.currentHtml || "";
                 state.cardsData = projectData.cards || []; state.colorIndex = projectData.colorIndex || 0;
+                state.WPM = projectData.WPM || 130; state.fontSize = projectData.fontSize || 8;
                 renderSidebar(); saveToLocal();
                 historyManager.pushHistory();
             } catch (error) { alert("Archivo corrupto o inválido."); }

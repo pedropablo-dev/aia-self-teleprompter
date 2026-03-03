@@ -30,6 +30,8 @@ export function startPrompter() {
     if (state.cardsData.length === 0) return;
     enterFullscreen();
     setupView.style.display = 'none'; prompterView.style.display = 'block';
+    prompterText.style.fontSize = state.fontSize + 'vh';
+    fontSizeSlider.value = state.fontSize;
     state.currentCardIndex = 0; renderPrompterCard();
 }
 
@@ -95,5 +97,7 @@ export function handleKeydown(e) {
 }
 
 export function updateFontSize(e) {
-    prompterText.style.fontSize = e.target.value + 'vh';
+    state.fontSize = Number(e.target.value);
+    prompterText.style.fontSize = state.fontSize + 'vh';
+    saveToLocal();
 }

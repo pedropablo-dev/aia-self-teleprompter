@@ -3,7 +3,7 @@ export const state = {
     currentCardIndex: 0,
     colorIndex: 0,
     draggedCardId: null,
-    originalTextContent: ""
+    originalTextContent: "",
+    WPM: 130,
+    fontSize: 8
 };
-
-export const WPM = 130;

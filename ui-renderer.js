@@ -1,4 +1,4 @@
-import { state, WPM } from './state.js';
+import { state } from './state.js';
 import { saveToLocal } from './storage.js';
 import { historyManager } from './history-manager.js';
 
@@ -8,7 +8,7 @@ const statsHeader = document.getElementById('global-stats-header');
 const statsSidebar = document.getElementById('global-stats-sidebar');
 const btnStart = document.getElementById('btn-start');
 
-export function calculateReadingTime(text) { return Math.ceil((text.trim().split(/\s+/).length / WPM) * 60); }
+export function calculateReadingTime(text) { return Math.ceil((text.trim().split(/\s+/).length / state.WPM) * 60); }
 
 export function updateGlobalStats() {
     const fullText = textContainer.innerText || "";
@@ -19,7 +19,7 @@ export function updateGlobalStats() {
 
     let totalCardsWords = 0; let totalCardsChars = 0;
     state.cardsData.forEach(card => { totalCardsChars += card.text.length; totalCardsWords += card.text.trim().split(/\s+/).length; });
-    const tSecsCards = Math.ceil((totalCardsWords / WPM) * 60);
+    const tSecsCards = Math.ceil((totalCardsWords / state.WPM) * 60);
     const minCards = Math.floor(tSecsCards / 60); const secCards = tSecsCards % 60;
     const timeStrCards = minCards > 0 ? `${minCards}m ${secCards}s` : `${secCards}s`;
 

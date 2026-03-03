@@ -148,6 +148,12 @@ document.addEventListener('keydown', function (e) {
     }
 });
 
+window.addEventListener('beforeunload', (e) => {
+    if (state.cardsData.length > 0 || textContainer.innerText.trim() !== '') {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 
 // --- INICIALIZACIÓN ---
 // Autocarga del estado al inicio del módulo
