@@ -4,9 +4,11 @@
 
 import { state } from './state.js';
 import { loadFromLocal, saveToLocal } from './storage.js';
-import { renderSidebar, deleteCard, updateGlobalStats } from './ui-renderer.js';
-import { startPrompter, exitPrompter, openJumpMenu, closeJumpMenu, toggleFontSlider, handlePrompterInput, nextCard, prevCard, handleKeydown, updateFontSize, cycleAlignment, toggleCompleted } from './prompter-engine.js';
+import { renderSidebar, deleteCard, updateGlobalStats, renderFullScript, updateStats } from './ui.js';
+import { startPrompter, exitPrompter, openJumpMenu, closeJumpMenu, toggleFontSlider, handlePrompterInput, nextCard, prevCard, handleKeydown, updateFontSize, cycleAlignment, toggleCompleted } from './engine.js';
 import { historyManager } from './history-manager.js';
+
+const renderPrompterText = renderFullScript;
 function sysDialog({ title = '', message = '', icon = '❓', confirmLabel = 'Aceptar', cancelLabel = 'Cancelar', isAlert = false } = {}) {
     return new Promise(resolve => {
         const overlay = document.getElementById('sys-dialog-overlay');
@@ -50,7 +52,7 @@ const jumpMenuOverlay = document.getElementById('jump-menu-overlay');
 
 // --- PERSISTENCIA DE SESIÓN ---
 let lastProjectId = localStorage.getItem('prompter_lastProjectId') || '';
-let activeSpeakers = JSON.parse(localStorage.getItem('prompter_activeSpeakers') || '[]');
+
 let isAutoLoading = false; // true durante restauraciones programáticas (evita confirm)
 
 // --- FUNCIÓN CENTRALIZADA DE RENDERIZADO ---
@@ -61,105 +63,6 @@ function updateSpeakerLabel(selected) {
     else if (selected.length === 1) { label.textContent = selected[0]; }
     else if (selected.length <= 3) { label.textContent = selected.join(', '); }
     else { label.textContent = `${selected.length} hablantes seleccionados`; }
-}
-
-function renderSelectedScenes(selectedSpeakers) {
-    if (!currentApiProject) return;
-
-    // --- 1. Calcular speakers añadidos y quitados respecto al estado previo ---
-    const removedSpeakers = activeSpeakers.filter(s => !selectedSpeakers.includes(s));
-
-    // --- 2. Si se quitaron hablantes, depurar state.cardsData por metadata ---
-    if (removedSpeakers.length > 0) {
-        state.cardsData = state.cardsData.filter(card => {
-            // Eliminar si el metadata de la tarjeta menciona alguno de los hablantes quitados
-            return !removedSpeakers.some(sp =>
-                card.metadata && card.metadata.includes(sp)
-            );
-        });
-    }
-
-    // --- 3. Persistir selección ---
-    activeSpeakers = selectedSpeakers;
-    localStorage.setItem('prompter_activeSpeakers', JSON.stringify(activeSpeakers));
-
-    // Si no hay ningún hablante, limpiar y salir
-    if (selectedSpeakers.length === 0) {
-        state.cardsData = []; cardsList.innerHTML = ''; state.colorIndex = 0;
-        textContainer.innerHTML = '';
-        renderSidebar(); updateGlobalStats(); historyManager.pushHistory();
-        return true;
-    }
-
-    // --- 4. Construir HTML recorriendo el proyecto en ORDEN ORIGINAL ---
-    const allScenes = currentApiProject.scenes || [];
-    let newHtml = '';
-
-    allScenes.forEach((scene) => {
-        const sceneSpeakerName = scene.scene_data?.speakerName || '';
-        if (!selectedSpeakers.includes(sceneSpeakerName)) return;
-
-        const scriptText = scene.script || (scene.scene_data && scene.scene_data.script) || '';
-        if (!scriptText.trim()) return;
-
-        // 4a. Construir cabecera
-        const absoluteIndex = allScenes.findIndex(s => s.id === scene.id) + 1;
-        const titleText = scene.title || (scene.scene_data && scene.scene_data.title) || '';
-        const cardTitle = titleText ? `&nbsp;•&nbsp; ${titleText}` : '';
-        const sectionText = scene.sectionName || scene.section ||
-            (scene.scene_data && (scene.scene_data.sectionName || scene.scene_data.section)) || '';
-        const cardSection = sectionText ? `&nbsp;•&nbsp; ${sectionText}` : '';
-        const cardSpeaker = sceneSpeakerName ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
-
-        newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 2px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
-        newHtml += `<span style="color: #b026ff;">TARJETA #${absoluteIndex}</span>${cardTitle}${cardSection}${cardSpeaker}`;
-        newHtml += `</div>`;
-
-        // 4b. Cruzar scriptText con tarjetas existentes para re-envolver marks
-        let bodyHtml = scriptText.trim();
-
-        // PARSER: Metadato limpio para nuevas tarjetas auto-generadas
-        const cleanMeta = `TARJETA #${absoluteIndex}${titleText ? ' • ' + titleText : ''}${sectionText ? ' • ' + sectionText : ''}${sceneSpeakerName ? ' • 🗣️ ' + sceneSpeakerName : ''}`;
-
-        // Convertir corchetes [texto] en tarjetas operativas y <mark> visuales
-        bodyHtml = bodyHtml.replace(/\[+([^\]]+)\]+/g, (match, content) => {
-            const cleanText = content.trim();
-            if (!cleanText) return match;
-
-            // 1. Buscar correspondencia exacta en la memoria (reutilizar ID si existe)
-            const existingCard = state.cardsData.find(c => c.text === cleanText && c.metadata === cleanMeta);
-            const cardId = existingCard ? existingCard.id : (Date.now() + Math.floor(Math.random() * 10000));
-
-            // 2. Registrar solo si es tarjeta huérfana (nueva)
-            if (!existingCard) {
-                state.cardsData.push({ id: cardId, text: cleanText, metadata: cleanMeta, completed: false });
-            }
-
-            const colorClass = `highlight c${state.colorIndex % 4}`;
-            state.colorIndex++;
-            return `<mark class="${colorClass}" id="mark-${cardId}">${cleanText}</mark>`;
-        });
-
-        state.cardsData.forEach(card => {
-            // Bloqueo de doble envoltorio: si el ID o el texto ya están envueltos, abortar
-            if (bodyHtml.includes(`id="mark-${card.id}"`)) return;
-            if (bodyHtml.includes(`>${card.text}</mark>`)) return;
-            // Solo cruzar tarjetas cuyo metadata apunte a este bloque
-            if (!bodyHtml.includes(card.text)) return;
-            const colorClass = `highlight c${state.cardsData.indexOf(card) % 4}`;
-            const markHtml = `<mark class="${colorClass}" id="mark-${card.id}">${card.text}</mark>`;
-            // Reemplazar solo la primera ocurrencia para evitar duplicados
-            bodyHtml = bodyHtml.replace(card.text, markHtml);
-        });
-        newHtml += `<div class="scene-text-block" data-scene-id="${scene.id}" style="display: block;">${bodyHtml}</div><br>`;
-    });
-
-    textContainer.innerHTML = newHtml;
-
-    renderSidebar();
-    updateGlobalStats();
-    historyManager.pushHistory();
-    return true;
 }
 
 // --- LISTENERS DE LA MODAL DE HABLANTES ---
@@ -188,8 +91,9 @@ document.getElementById('speaker-modal-list').addEventListener('change', (e) => 
         document.querySelectorAll('#speaker-modal-list input[type=checkbox]:checked')
     ).map(cb => cb.value);
 
+    state.selectedSpeakers = checked;
     updateSpeakerLabel(checked);
-    renderSelectedScenes(checked);
+    renderFullScript();
 });
 
 // --- EVENTOS DEL PANEL PRINCIPAL (SETUP) ---
@@ -219,7 +123,8 @@ document.getElementById('btn-refresh').addEventListener('click', async () => {
 
     // Re-renderizar como carga limpia
     isAutoLoading = true;
-    renderSelectedScenes(checked);
+    state.selectedSpeakers = checked;
+    renderFullScript();
     isAutoLoading = false;
 });
 document.getElementById('btn-clear').addEventListener('click', async () => {
@@ -239,7 +144,7 @@ document.getElementById('btn-clear').addEventListener('click', async () => {
     updateGlobalStats();
     localStorage.removeItem('prompterAutosave');
     historyManager.pushHistory();
-    activeSpeakers = []; localStorage.setItem('prompter_activeSpeakers', '[]');
+    state.selectedSpeakers = []; localStorage.setItem('prompter_activeSpeakers', '[]');
     // Resetear modal de hablantes
     const speakerModalListClear = document.getElementById('speaker-modal-list');
     const customSelectClear = document.getElementById('custom-speaker-select');
@@ -586,29 +491,60 @@ document.getElementById('json-upload-input').addEventListener('change', function
     reader.onload = function (event) {
         try {
             const importedData = JSON.parse(event.target.result);
+            // 1. Cargar Escenas (Metadata de apoyo)
+            const rawScenes = (importedData.project && importedData.project.scenes) ? importedData.project.scenes : (importedData.scenes || []);
+            state.scenes = Array.isArray(rawScenes) ? rawScenes.map(s => s.scene_data || s) : [];
 
-            // 1. Inyectar en el núcleo (AIA Studio exporta escenas)
-            currentApiProject = importedData;
-            const speakers = [...new Set(
-                (importedData.scenes || []).map(s => s.scene_data?.speakerName || s.speakerName).filter(Boolean)
-            )];
+            // 2. CARGAR TARJETAS (Estructura real del prompter)
+            // Priorizamos el array 'cards' que viene en la raíz del JSON
+            if (importedData.cards && Array.isArray(importedData.cards) && importedData.cards.length > 0) {
+                state.cards = importedData.cards;
+                // Sincronizar con cardsData (Panel Lateral)
+                state.cardsData = importedData.cards.map(c => ({
+                    id: c.id,
+                    text: c.text,
+                    metadata: c.metadata,
+                    completed: c.completed || false
+                }));
+            } else {
+                // Si no hay tarjetas, las generamos a partir de las escenas
+                state.cardsData = state.scenes.map((s, idx) => ({
+                    id: s.id || Date.now() + idx,
+                    text: s.script || "",
+                    metadata: `TARJETA #${idx + 1} • ${s.speakerName || 'Hablante'}`,
+                    completed: false
+                }));
+            }
 
-            // 2. Destruir bloqueo visual
+
+            // 3. Configurar Hablantes y Colores
+            if (importedData.project && importedData.project.metadata_config) {
+                state.presetColors = importedData.project.metadata_config.colors || [];
+                state.presetSpeakers = importedData.project.metadata_config.speakers || [];
+                state.selectedSpeakers = state.presetSpeakers.map(s => s.name);
+            } else {
+                state.selectedSpeakers = [...new Set(state.scenes.map(s => s.speakerName).filter(Boolean))];
+            }
+
+            // Destruir bloqueo y renderizar
             const bootScreen = document.getElementById('pwa-boot-screen');
             if (bootScreen) bootScreen.style.display = 'none';
 
-            // 3. Forzar renderizado total (Módulos internos)
-            if (typeof renderSelectedScenes === 'function') {
-                renderSelectedScenes(speakers);
-            }
+            // Forzar renderizado total de la PWA
             if (typeof renderSidebar === 'function') renderSidebar();
+            if (typeof renderFullScript === 'function') renderFullScript();
+            if (typeof updateStats === 'function') updateStats();
 
-            // 4. Registrar en Storage (Seguridad contra recargas)
+            // El texto para el modo grabación también se prepara
+            if (typeof renderPrompterText === 'function') renderPrompterText();
+
+            console.log(`PWA: ${state.cardsData.length} tarjetas cargadas con éxito.`);
+
             if (typeof saveToLocal === 'function') saveToLocal();
 
         } catch (error) {
-            console.error(error);
-            alert("Fallo crítico de sintaxis en el JSON importado: \n" + error.message);
+            console.error("Fallo en la carga PWA:", error);
+            alert("Error al procesar JSON. Revisa la consola.");
         }
     };
     reader.readAsText(file);

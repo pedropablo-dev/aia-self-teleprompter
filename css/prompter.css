@@ -567,3 +567,9 @@ input[type="range"] {
     transition: opacity 0.5s;
     z-index: 1000;
 }
+
+/* --- Parche Visual: Eliminación de Anillo de Foco --- */
+*:focus, *:focus-visible, [contenteditable="true"]:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}

@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { renderSidebar } from './ui-renderer.js';
+import { renderSidebar } from './ui.js';
 import { saveToLocal } from './storage.js';
 
 class HistoryManager {

@@ -1,6 +1,6 @@
 import { state } from './state.js';
 import { saveToLocal } from './storage.js';
-import { calculateReadingTime, updateGlobalStats } from './ui-renderer.js';
+import { calculateReadingTime, updateGlobalStats } from './ui.js';
 
 const setupView = document.getElementById('setup-view');
 const prompterView = document.getElementById('prompter-view');
@@ -171,5 +171,5 @@ export function toggleCompleted(e) {
 
     saveToLocal();
     // Re-render sidebar en background
-    import('./ui-renderer.js').then(m => m.renderSidebar());
+    import('./ui.js').then(m => m.renderSidebar());
 }

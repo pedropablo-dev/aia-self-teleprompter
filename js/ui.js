@@ -21,6 +21,8 @@ const getGroupColor = (str) => {
     return `hsl(${hue}, 70%, 50%)`;
 };
 
+export const updateStats = updateGlobalStats;
+
 export function updateGlobalStats() {
     const fullText = textContainer.innerText || "";
     const tSecsDoc = calculateReadingTime(fullText);
@@ -195,11 +197,57 @@ export function swapCards(idA, idB) {
     state.cardsData[indexA] = state.cardsData[indexB];
     state.cardsData[indexB] = tempCard;
 
-    // El panel de texto izquierdo permanece INMUTABLE (Phase 5.4.8).
-    // Al mover manualmente, el selector vuelve a "manual" para evitar confusión de UI.
     const sorter = document.getElementById('sidebar-sorter');
     if (sorter) sorter.value = 'manual';
     renderSidebar();
     saveToLocal();
     historyManager.pushHistory();
+}
+
+export function renderFullScript() {
+    const selectedSpeakers = state.selectedSpeakers || [];
+    const allScenes = state.scenes || [];
+    let newHtml = '';
+
+    if (selectedSpeakers.length === 0 && allScenes.length > 0) {
+        textContainer.innerHTML = '';
+        return;
+    }
+
+    allScenes.forEach((scene) => {
+        const sceneSpeakerName = scene.speakerName || (scene.scene_data && scene.scene_data.speakerName) || '';
+        if (selectedSpeakers.length > 0 && !selectedSpeakers.includes(sceneSpeakerName)) return;
+
+        const scriptText = scene.script || (scene.scene_data && scene.scene_data.script) || '';
+        if (!scriptText.trim()) return;
+
+        const absoluteIndex = allScenes.indexOf(scene) + 1;
+        const titleText = scene.title || (scene.scene_data && scene.scene_data.title) || '';
+        const sectionText = scene.sectionName || scene.section || (scene.scene_data && (scene.scene_data.sectionName || scene.scene_data.section)) || '';
+
+        const cardTitle = titleText ? `&nbsp;•&nbsp; ${titleText}` : '';
+        const cardSection = sectionText ? `&nbsp;•&nbsp; ${sectionText}` : '';
+        const cardSpeaker = sceneSpeakerName ? `&nbsp;•&nbsp; 🗣️ ${sceneSpeakerName}` : '';
+
+        newHtml += `<div contenteditable="false" style="color: #7a7a7a; font-size: 0.8rem; margin-top: 35px; margin-bottom: 10px; user-select: none; border-bottom: 2px solid #333; padding-bottom: 4px; letter-spacing: 0.5px;">`;
+        newHtml += `<span style="color: #b026ff;">TARJETA #${absoluteIndex}</span>${cardTitle}${cardSection}${cardSpeaker}`;
+        newHtml += `</div>`;
+
+        let bodyHtml = scriptText.trim();
+
+        // Cruzar con tarjetas existentes (highlights)
+        state.cardsData.forEach(card => {
+            if (bodyHtml.includes(`id="mark-${card.id}"`)) return;
+            if (bodyHtml.includes(`>${card.text}</mark>`)) return;
+            if (!bodyHtml.includes(card.text)) return;
+            const colorClass = `highlight c${state.cardsData.indexOf(card) % 4}`;
+            const markHtml = `<mark class="${colorClass}" id="mark-${card.id}">${card.text}</mark>`;
+            bodyHtml = bodyHtml.replace(card.text, markHtml);
+        });
+
+        newHtml += `<div class="scene-text-block" data-scene-id="${scene.id}" style="display: block;">${bodyHtml}</div><br>`;
+    });
+
+    textContainer.innerHTML = newHtml;
+    updateGlobalStats();
 }

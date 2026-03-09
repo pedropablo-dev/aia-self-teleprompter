@@ -1,5 +1,5 @@
 import { state } from './state.js';
-import { updateGlobalStats, renderSidebar } from './ui-renderer.js';
+import { updateGlobalStats, renderSidebar } from './ui.js';
 import { historyManager } from './history-manager.js';
 
 const textContainer = document.getElementById('text-container');
