@@ -652,3 +652,11 @@ document.getElementById('json-upload-input').addEventListener('change', function
     reader.readAsText(file);
 });
 
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(reg => console.log('PWA: Service Worker registrado con éxito.'))
+            .catch(err => console.warn('PWA: Error al registrar SW:', err));
+    });
+}
+
