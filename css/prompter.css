@@ -38,18 +38,22 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
 .header-left {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex-wrap: wrap;
 }
 
 .header-right {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .logo-link img {
@@ -91,6 +95,7 @@ body {
     display: inline-block;
     cursor: pointer;
     transition: border 0.2s;
+    flex-shrink: 0;
 }
 
 .file-upload-wrapper:hover .btn-custom-file {
@@ -119,6 +124,7 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
+    flex-shrink: 0;
 }
 
 .icon-btn:hover {
