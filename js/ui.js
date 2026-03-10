@@ -107,11 +107,13 @@ export function renderSidebar() {
         }
         cardDiv.style.cssText = groupStyles;
 
-        let metaHtml = '';
-        if (card.metadata) {
-            const styledMeta = card.metadata.replace(/(TARJETA #[0-9]+|➔ #[0-9]+)/g, '<span style="color: #b026ff; font-weight: normal;">$1</span>');
-            metaHtml = `<div class="card-meta-text" style="font-size:0.75rem; color:#888; padding:4px 6px; background:var(--bg-card); border-bottom:1px solid #333; margin-top:-2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${card.metadata}">${styledMeta}<span class="focus-indicator" style="opacity: 0; transition: opacity 0.2s; color: #b026ff; font-size: 0.8rem; margin-left: 10px; font-weight: bold; pointer-events: none;">✍️ EDITANDO</span></div>`;
-        }
+        const metaText = card.metadata || 'Tarjeta sin metadatos';
+        const styledMeta = metaText.replace(/(TARJETA #[0-9]+|➔ #[0-9]+)/g, '<span style="color: #b026ff; font-weight: normal;">$1</span>');
+        const metaHtml = `<div class="card-meta-text" style="font-size:0.75rem; color:#888; padding:4px 6px; background:var(--bg-card); border-bottom:1px solid #333; margin-top:-2px; display:flex; align-items:center; gap:8px;" title="${metaText}">
+            <span class="drag-handle" style="cursor: grab; font-size: 16px; color: #777; user-select: none; padding: 2px;" title="Arrastrar tarjeta">⋮⋮</span>
+            <span style="flex-grow: 1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${styledMeta}</span>
+            <span class="focus-indicator" style="opacity: 0; transition: opacity 0.2s; color: #b026ff; font-size: 0.8rem; font-weight: bold; pointer-events: none;">✍️ EDITANDO</span>
+        </div>`;
 
         const checkClass = card.completed ? 'btn-check completed' : 'btn-check';
         const checkStyle = card.completed
