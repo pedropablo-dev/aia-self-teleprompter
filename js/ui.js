@@ -78,7 +78,7 @@ export function renderSidebar() {
     filteredCards.forEach((card, i) => {
         const timeStr = calculateReadingTime(card.text) + "s";
         const cardDiv = document.createElement('div');
-        cardDiv.className = 'card-item'; cardDiv.draggable = true; cardDiv.dataset.id = card.id;
+        cardDiv.className = 'card-item'; cardDiv.dataset.id = card.id;
 
         // --- Agrupación Visual Inteligente de Tarjetas ---
         const currentMeta = card.metadata || '';
@@ -110,7 +110,7 @@ export function renderSidebar() {
         const metaText = card.metadata || 'Tarjeta sin metadatos';
         const styledMeta = metaText.replace(/(TARJETA #[0-9]+|➔ #[0-9]+)/g, '<span style="color: #b026ff; font-weight: normal;">$1</span>');
         const metaHtml = `<div class="card-meta-text" style="font-size:0.75rem; color:#888; padding:4px 6px; background:var(--bg-card); border-bottom:1px solid #333; margin-top:-2px; display:flex; align-items:center; gap:8px;" title="${metaText}">
-            <span class="drag-handle" style="cursor: grab; font-size: 16px; color: #777; user-select: none; padding: 2px;" title="Arrastrar tarjeta">⋮⋮</span>
+            <span class="drag-handle" style="cursor: grab; font-size: 16px; color: #777; user-select: none; padding: 2px; touch-action: none;" title="Arrastrar tarjeta">⋮⋮</span>
             <span style="flex-grow: 1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${styledMeta}</span>
             <span class="focus-indicator" style="opacity: 0; transition: opacity 0.2s; color: #b026ff; font-size: 0.8rem; font-weight: bold; pointer-events: none;">✍️ EDITANDO</span>
         </div>`;
@@ -136,6 +136,7 @@ export function renderSidebar() {
             </div>
         </div>`;
         cardDiv.addEventListener('dragstart', (e) => { state.draggedCardId = card.id; e.dataTransfer.effectAllowed = 'move'; });
+        cardDiv.addEventListener('dragend', () => { cardDiv.draggable = false; });
         cardDiv.addEventListener('dragover', (e) => { e.preventDefault(); cardDiv.classList.add('drag-over'); });
         cardDiv.addEventListener('dragleave', () => cardDiv.classList.remove('drag-over'));
         cardDiv.addEventListener('drop', (e) => {
@@ -143,6 +144,18 @@ export function renderSidebar() {
             const targetId = card.id; if (state.draggedCardId && state.draggedCardId !== targetId) swapCards(state.draggedCardId, targetId);
         });
         cardsList.appendChild(cardDiv);
+
+        // Activación dinámica del arrastre exclusivamente desde el handle
+        const dragHandle = cardDiv.querySelector('.drag-handle');
+        if (dragHandle) {
+            const enableDrag = () => { cardDiv.draggable = true; };
+            const disableDrag = () => { cardDiv.draggable = false; };
+            dragHandle.addEventListener('mousedown', enableDrag);
+            dragHandle.addEventListener('touchstart', enableDrag, { passive: true });
+            dragHandle.addEventListener('mouseup', disableDrag);
+            dragHandle.addEventListener('touchend', disableDrag);
+            dragHandle.addEventListener('mouseleave', disableDrag);
+        }
     });
     updateGlobalStats();
 
