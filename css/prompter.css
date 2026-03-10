@@ -693,7 +693,6 @@ input[type="range"] {
     /* Ergonomía: Áreas de clic aumentadas a 48px */
     .icon-btn,
     .btn-custom-file,
-    .btn-delete,
     #btn-start {
         min-height: 48px;
         min-width: 48px;
